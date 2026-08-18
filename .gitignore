@@ -1,0 +1,20 @@
+
+.bench-scratch/
+build/
+.coverage
+demo-repo/
+dist/
+*.egg-info/
+.eggs/
+htmlcov/
+.idea/
+# local noise
+.mypy_cache/
+*.patch
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+/tmp-*/
+.venv/
+.vscode/
