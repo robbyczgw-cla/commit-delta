@@ -30,7 +30,7 @@ Same failure. 93 hunks → 1 hunk.
 
 ![commit-delta reducing a 567-line dirty tree to one hunk](docs/demo.gif)
 
-[Download the demo as MP4](docs/demo.mp4) (21s).
+[Download the demo as MP4](docs/demo.mp4) — live `xfce4-terminal` capture, 15s.
 
 On a real multi-file Python tree (four feature commits left
 uncommitted): **28 files / 2230 lines → 2 files / 69 lines** in about

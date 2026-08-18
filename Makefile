@@ -25,7 +25,7 @@ demo:
 	cd demo-repo && PYTHONPATH=../src $(PYTHON) -m commit_delta --verbose --output reduced.patch -- ./reproduce.sh
 
 demo-video:
-	python3 scripts/render_demo_video.py docs
+	bash scripts/record_live_demo.sh
 
 clean:
 	rm -rf .bench-scratch demo-repo dist build *.egg-info .pytest_cache
