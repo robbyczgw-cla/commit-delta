@@ -2,13 +2,15 @@
 
 **git bisect for a dirty working tree.**
 
-HEAD is green. Your uncommitted changes are a mess. The test is red.
-`commit-delta` throws hunks away until it has a **small set that still
-fails**.
+You have a known-good `HEAD`, a pile of uncommitted changes, and a
+test that fails on the full working tree. `commit-delta` finds a
+**minimal failure-inducing change set** — the smallest 1-minimal
+subset of those hunks that still fails the test.
 
-It does not explain the bug. It does not fix the bug. It does not
-name one guilty line. Multiple hunks may interact; another 1-minimal
-set may also fail. You get a reduced patch you can actually read.
+It will not tell you that one line is “the cause”. Several hunks may
+need each other. Another 1-minimal subset may also fail. The output
+is a reduced patch you can read, apply, and hand to a reviewer or
+an agent.
 
 ```
 HEAD:          PASS
@@ -24,54 +26,60 @@ calc.py
     +        acc = acc - item
 ```
 
-93 hunks → 1 hunk. Same failure.
+Same failure. 93 hunks → 1 hunk.
 
-On a real repo (`wsp-verify`, four feature commits left uncommitted):
-28 files / 2230 lines → 2 files / 69 lines in 8 seconds. That run
-returned *a* 1-minimal fail, not “the” bug — two other independent
-fails existed in the same tree. That is expected.
+On a real multi-file Python tree (four feature commits left
+uncommitted): **28 files / 2230 lines → 2 files / 69 lines** in about
+8 seconds. That run returned *a* 1-minimal fail, not the only one.
+Two other independent fails lived in the same tree. That is the
+tool working as designed.
 
 ## Install
 
-Needs Git 2.5+ (`git worktree`) and Python 3.10+.
+Requires Git 2.5+ (`git worktree`) and Python 3.10+.
+
+From a clone:
 
 ```bash
-git clone git@github.com:robbyczgw-cla/commit-delta.git
+git clone https://github.com/robbyczgw-cla/commit-delta.git
 cd commit-delta
 python3 -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -e .
 ```
 
-Private repo: use SSH or a GitHub token. Not on PyPI yet.
+Or directly:
 
 ```bash
-pip install "git+ssh://git@github.com/robbyczgw-cla/commit-delta.git"
+pip install "git+https://github.com/robbyczgw-cla/commit-delta.git"
 ```
+
+Not on PyPI yet.
 
 ## Use
 
+Run the **same command** that is already failing:
+
 ```bash
-# same test that is already red
 commit-delta -- ./reproduce.sh
 commit-delta -- pytest -q
 commit-delta --output reduced.patch --json reduced.json -- npm test
 ```
 
-The command after `--` runs in an **isolated worktree**. Your dirty
-tree is only read.
+Everything after `--` is your reproduction command. It runs inside
+an isolated worktree. Your dirty tree is only read, never rewritten.
 
-| You want | Flag |
+| Goal | Flag |
 |---|---|
-| a patch to inspect | `--output reduced.patch` |
-| JSON for an agent | `--json reduced.json` |
-| each trial logged | `--verbose` |
-| flake-resistant FAIL | `--confirm 3` |
-| hung tests | `--timeout 60s` |
-| only some paths | `--include src` / `--exclude tests` |
-| no traceback heuristics | `--strict-exits` |
+| Write a patch | `--output reduced.patch` |
+| Write JSON (agents) | `--json reduced.json` |
+| Log every trial | `--verbose` |
+| Confirm flaky FAILs | `--confirm 3` |
+| Kill hung tests | `--timeout 60s` |
+| Narrow the search | `--include src` / `--exclude tests` |
+| Trust exit codes only | `--strict-exits` |
 
-### Your test command
+### What your command should return
 
 Same contract as `git bisect run`:
 
@@ -81,68 +89,67 @@ Same contract as `git bisect run`:
 | `125` | UNRESOLVED — this subset cannot build, parse, or import |
 | other | FAIL — the failure you want isolated |
 
-If compile errors and the real assertion both exit `1`, wrap the
-command and map “cannot run” to `125`. For Python, `SyntaxError` /
-`ImportError` and (when no `AssertionError` is in the output)
+If “cannot compile” and “assertion failed” both exit `1`, wrap the
+command and map unbuildable subsets to `125`. For Python,
+`SyntaxError` / `ImportError` and (when no `AssertionError` appears)
 `TypeError` / `AttributeError` are already treated as UNRESOLVED.
 
-The test must work from a **fresh checkout + the candidate hunks**.
-It will not see your `node_modules` or `.venv`. Either the command
-installs what it needs, or you point at a test that can run bare.
+The command must work from a **clean checkout plus the candidate
+hunks**. The probe tree does not include your `node_modules` or
+local virtualenv.
 
-## What it does
+## How it works
 
-1. Check HEAD is GOOD and the full dirty tree is BAD.
-2. Snapshot `git diff HEAD -U0` plus untracked text files.
-3. Reduce files first, then hunks (ddmin).
+1. Verify `HEAD` is GOOD and the full dirty tree is BAD.
+2. Snapshot `git diff HEAD -U0` and untracked text files.
+3. Reduce at file granularity, then hunk granularity (ddmin).
 4. Apply each candidate in a temporary worktree. Cache results.
-5. Print a report. Optionally write `reduced.patch` and `reduced.json`.
-
-Your working tree is never checked out, reset, or rewritten.
+5. Print a report; optionally write `reduced.patch` and `reduced.json`.
 
 ## For coding agents
 
-Read **[AGENTS.md](AGENTS.md)**. One run after tests go red:
+See **[AGENTS.md](AGENTS.md)**. After tests go red, run once:
 
 ```bash
 commit-delta --output reduced.patch --json reduced.json -- <the-same-test>
 ```
 
-Then work only on `reduced.json` / `reduced.patch`. Do not loop. Do
-not invent MCP. `unique_not_guaranteed` is always true.
+Prefer `reduced.json` over scraping the text report. Work only on
+that subset. Do not loop. The field `unique_not_guaranteed` is
+always true.
 
-## Not this
+## Compared to nearby tools
 
 | Tool | Answers |
 |---|---|
-| `git bisect` | which *commit* in history broke |
-| `git add -p` | how to stage hunks by hand |
-| Shrink Ray / C-Reduce | shrink a failing *input file* |
-| **commit-delta** | shrink an uncommitted *change set* |
+| `git bisect` | Which *commit* in history broke? |
+| `git add -p` | How do I stage hunks by hand? |
+| Shrink Ray / C-Reduce | How do I shrink a failing *input file*? |
+| **commit-delta** | Which *uncommitted hunks* still fail the test? |
 
-## Limits (v0.1)
+## Limitations (v0.1)
 
 - Atoms are hunks, not statements. A 40-line rewrite is one piece.
-- Result is **a** 1-minimal FAIL set. Uniqueness is not guaranteed.
-- Text only. No binaries, submodules, or ignored build trees.
-- Isolated worktree has no `node_modules` / local venv unless your
-  command creates them.
-- Renames and odd encodings are best-effort.
-- `npm test` / `tsc` / `cargo` need an exit-125 wrapper if they use
-  `1` for both “won’t compile” and “assertion failed”.
+- The result is **a** 1-minimal FAIL set. Uniqueness is not guaranteed.
+- Text files only. No binaries, submodules, or ignored build trees.
+- The isolated worktree has no local `node_modules` / venv unless
+  your command creates them.
+- Renames and unusual encodings are best-effort.
+- `npm test`, `tsc`, and `cargo` need an exit-`125` wrapper if they
+  use `1` for both compile errors and test failures.
 
-Full list: [docs/limitations.md](docs/limitations.md).
+Details: [docs/limitations.md](docs/limitations.md).
 
 ## Develop
 
 ```bash
 pip install -e ".[dev]"
-make test    # 85 tests
-make bench   # fixtures A–G + demo
-make demo    # materialize the 567-line dirty tree and reduce it
+make test    # unit + fixture e2e
+make bench   # candidate counts / reduction ratios
+make demo    # 567-line dirty tree → one hunk
 ```
 
-| Fixture | Expectation |
+| Fixture | Expected reduction |
 |---|---|
 | A | one bad hunk among 20+ noise hunks |
 | B | A and B each pass; A+B fail — both kept |

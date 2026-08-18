@@ -33,8 +33,10 @@ dev = ["pytest>=8.0"]
 commit-delta = "commit_delta.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/commit-delta/commit-delta"
-Documentation = "https://github.com/commit-delta/commit-delta#readme"
+Homepage = "https://github.com/robbyczgw-cla/commit-delta"
+Documentation = "https://github.com/robbyczgw-cla/commit-delta#readme"
+Source = "https://github.com/robbyczgw-cla/commit-delta"
+Issues = "https://github.com/robbyczgw-cla/commit-delta/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]
