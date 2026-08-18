@@ -165,7 +165,7 @@ def type_command(term: Terminal, frames: list[Image.Image], cmd: str) -> None:
 
 
 def main() -> int:
-    out_dir = Path(sys.argv[1] if len(sys.argv) > 1 else "/root/hunkhunt/docs")
+    out_dir = Path(sys.argv[1] if len(sys.argv) > 1 else "docs")
     out_dir.mkdir(parents=True, exist_ok=True)
     term = Terminal()
     frames: list[Image.Image] = []

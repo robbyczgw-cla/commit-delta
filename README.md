@@ -42,23 +42,19 @@ tool working as designed.
 
 Requires Git 2.5+ (`git worktree`) and Python 3.10+.
 
-From a clone:
+```bash
+pip install commit-delta
+```
+
+From a clone, for development:
 
 ```bash
 git clone https://github.com/robbyczgw-cla/commit-delta.git
 cd commit-delta
 python3 -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -e .
+pip install -e ".[dev]"
 ```
-
-Or directly:
-
-```bash
-pip install "git+https://github.com/robbyczgw-cla/commit-delta.git"
-```
-
-Not on PyPI yet.
 
 ## Use
 
